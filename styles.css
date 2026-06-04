@@ -1,0 +1,320 @@
+/**
+ * json-form-render — optional prebuilt stylesheet.
+ *
+ *   import "json-form-render/styles.css";
+ *
+ * A batteries-included default theme for the headless `html` adapter. The
+ * package itself ships ZERO CSS; this file is opt-in. It styles the stable
+ * `fr-*` class hooks and is fully scoped to `.fr-form`, so it won't touch the
+ * rest of your app. Everything is driven by `--fr-*` custom properties — override
+ * them (globally or per-form) to theme it:
+ *
+ *   .fr-form { --fr-primary: #0ea5e9; --fr-radius: 0.75rem; }
+ *
+ * Dark mode applies automatically via prefers-color-scheme, and also when an
+ * ancestor has `.dark` or `[data-theme="dark"]` (e.g. a manual theme toggle).
+ */
+
+.fr-form {
+  --fr-fg: #111827;
+  --fr-muted: #6b7280;
+  --fr-bg: #ffffff;
+  --fr-subtle-bg: #f9fafb;
+  --fr-border: #d1d5db;
+  --fr-primary: #4f46e5;
+  --fr-primary-fg: #ffffff;
+  --fr-danger: #ef4444;
+  --fr-ring: #6366f1;
+  --fr-radius: 0.5rem;
+  --fr-gap: 1rem;
+
+  color: var(--fr-fg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap);
+}
+
+/* dark mode — automatic, plus opt-in via .dark / [data-theme="dark"] */
+@media (prefers-color-scheme: dark) {
+  .fr-form {
+    --fr-fg: #f3f4f6;
+    --fr-muted: #9ca3af;
+    --fr-bg: #0b0b0c;
+    --fr-subtle-bg: #18181b;
+    --fr-border: #3f3f46;
+    --fr-primary: #6366f1;
+    --fr-primary-fg: #ffffff;
+    --fr-danger: #f87171;
+    --fr-ring: #818cf8;
+  }
+}
+.dark .fr-form,
+[data-theme="dark"] .fr-form {
+  --fr-fg: #f3f4f6;
+  --fr-muted: #9ca3af;
+  --fr-bg: #0b0b0c;
+  --fr-subtle-bg: #18181b;
+  --fr-border: #3f3f46;
+  --fr-primary: #6366f1;
+  --fr-primary-fg: #ffffff;
+  --fr-danger: #f87171;
+  --fr-ring: #818cf8;
+}
+
+/* ── fields ─────────────────────────────────────────────────────────────── */
+.fr-form .fr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.fr-form .fr-field[data-type="checkbox"],
+.fr-form .fr-field[data-type="switch"] {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fr-form .fr-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.fr-form .fr-required {
+  color: var(--fr-danger);
+}
+.fr-form .fr-description {
+  font-size: 0.75rem;
+  color: var(--fr-muted);
+}
+.fr-form .fr-error {
+  font-size: 0.75rem;
+  color: var(--fr-danger);
+}
+
+/* ── controls ───────────────────────────────────────────────────────────── */
+.fr-form .fr-control {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--fr-fg);
+  background: var(--fr-bg);
+  border: 1px solid var(--fr-border);
+  border-radius: var(--fr-radius);
+}
+.fr-form .fr-control:focus,
+.fr-form .fr-control:focus-visible {
+  outline: 2px solid var(--fr-ring);
+  outline-offset: 1px;
+  border-color: var(--fr-ring);
+}
+.fr-form .fr-control:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.fr-form .fr-field[data-invalid="true"] .fr-control {
+  border-color: var(--fr-danger);
+}
+.fr-form .fr-field[data-type="checkbox"] .fr-control,
+.fr-form .fr-field[data-type="switch"] .fr-control {
+  width: auto;
+}
+.fr-form textarea.fr-control {
+  resize: vertical;
+}
+/* native controls that shouldn't get the text-input box treatment */
+.fr-form .fr-control[type="range"] {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.fr-form .fr-control[type="color"] {
+  padding: 0.15rem;
+  height: 2.25rem;
+}
+.fr-form .fr-control[type="file"] {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+/* prefix/suffix addons */
+.fr-form .fr-addon-group {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+.fr-form .fr-addon {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.6rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: var(--fr-muted);
+  background: var(--fr-subtle-bg);
+  border: 1px solid var(--fr-border);
+}
+.fr-form .fr-prefix {
+  border-right: 0;
+  border-radius: var(--fr-radius) 0 0 var(--fr-radius);
+}
+.fr-form .fr-suffix {
+  border-left: 0;
+  border-radius: 0 var(--fr-radius) var(--fr-radius) 0;
+}
+/* control fills the row; corners square in the middle, rounded only on the
+   side with no addon (first-child = no prefix, last-child = no suffix). */
+.fr-form .fr-addon-group .fr-control {
+  flex: 1 1 auto;
+  width: auto;
+  border-radius: 0;
+}
+.fr-form .fr-addon-group .fr-control:first-child {
+  border-radius: var(--fr-radius) 0 0 var(--fr-radius);
+}
+.fr-form .fr-addon-group .fr-control:last-child {
+  border-radius: 0 var(--fr-radius) var(--fr-radius) 0;
+}
+
+/* radio */
+.fr-form .fr-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.fr-form .fr-radio-option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+/* file */
+.fr-form .fr-file {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--fr-border);
+  border-radius: var(--fr-radius);
+  background: var(--fr-subtle-bg);
+}
+.fr-form .fr-file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.fr-form .fr-file-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  background: var(--fr-bg);
+  border: 1px solid var(--fr-border);
+  border-radius: var(--fr-radius);
+}
+.fr-form .fr-file-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fr-form .fr-file-size {
+  color: var(--fr-muted);
+  margin-left: auto;
+}
+.fr-form .fr-file-remove {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--fr-muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+.fr-form .fr-file-remove:hover {
+  color: var(--fr-danger);
+}
+
+/* ── multi-step chrome ──────────────────────────────────────────────────── */
+.fr-form .fr-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+.fr-form .fr-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.fr-form .fr-step-chip {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--fr-border);
+  color: var(--fr-muted);
+}
+.fr-form .fr-step-chip[data-active="true"] {
+  background: var(--fr-primary);
+  border-color: var(--fr-primary);
+  color: var(--fr-primary-fg);
+}
+.fr-form .fr-step,
+.fr-form .fr-section {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap);
+}
+.fr-form .fr-section + .fr-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--fr-border);
+}
+.fr-form .fr-step-title,
+.fr-form .fr-section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.fr-form .fr-step-description,
+.fr-form .fr-section-description {
+  font-size: 0.8rem;
+  color: var(--fr-muted);
+}
+
+/* ── actions / buttons ──────────────────────────────────────────────────── */
+.fr-form .fr-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.fr-form .fr-btn {
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: var(--fr-radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.fr-form .fr-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.fr-form .fr-btn-primary {
+  background: var(--fr-primary);
+  color: var(--fr-primary-fg);
+}
+.fr-form .fr-btn-secondary,
+.fr-form .fr-btn-outline {
+  background: transparent;
+  border-color: var(--fr-border);
+  color: var(--fr-fg);
+}

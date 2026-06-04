@@ -1,0 +1,10 @@
+node_modules
+dist
+playground/dist
+playground/dist-shadcn
+playground/dist-docs
+*.log
+.DS_Store
+.turbo
+coverage
+.mcp.json
