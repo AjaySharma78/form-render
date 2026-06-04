@@ -9,10 +9,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/json-form-render.git"
+    "url": "git+https://github.com/AjaySharma78/form-render.git"
   },
-  "homepage": "https://github.com/your-org/json-form-render#readme",
-  "bugs": "https://github.com/your-org/json-form-render/issues",
+  "homepage": "https://github.com/AjaySharma78/form-render#readme",
+  "bugs": "https://github.com/AjaySharma78/form-render/issues",
   "bin": {
     "form-render": "bin/form-render.mjs"
   },
