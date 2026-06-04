@@ -1,5 +1,5 @@
 {
-  "name": "json-form-render",
+  "name": "schema-form-engine",
   "version": "0.1.0",
   "description": "Headless, JSON-driven React form engine. Declarative schema compiled to Zod + React Hook Form, rendered through an injectable component adapter (shadcn-ready).",
   "type": "module",

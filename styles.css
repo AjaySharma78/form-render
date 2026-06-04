@@ -1,7 +1,7 @@
 /**
- * json-form-render — optional prebuilt stylesheet.
+ * schema-form-engine — optional prebuilt stylesheet.
  *
- *   import "json-form-render/styles.css";
+ *   import "schema-form-engine/styles.css";
  *
  * A batteries-included default theme for the headless `html` adapter. The
  * package itself ships ZERO CSS; this file is opt-in. It styles the stable

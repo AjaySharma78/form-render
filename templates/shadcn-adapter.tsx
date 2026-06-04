@@ -18,7 +18,7 @@
  *   DropzoneContent and only needs your shadcn Button + cn.
  *
  * Usage (100% shadcn — no custom markup):
- *   import { FormRender } from "json-form-render";
+ *   import { FormRender } from "schema-form-engine";
  *   import { shadcnComponents, shadcnSlots } from "@/lib/form-render-shadcn";
  *   <FormRender
  *     schema={schema}
@@ -39,7 +39,7 @@ import type {
   SectionSlotProps,
   StepSlotProps,
   StepperSlotProps,
-} from "json-form-render";
+} from "schema-form-engine";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { BadgeQuestionMark, CheckIcon, ChevronDownIcon, FileIcon, X } from "lucide-react";

@@ -1,4 +1,4 @@
-# json-form-render
+# schema-form-engine
 
 Headless, **JSON-driven React forms**. A declarative schema compiles to a **Zod**
 schema (validation) and drives **React Hook Form** (state). The UI is rendered
@@ -17,14 +17,14 @@ shadcn (recommended), MUI, or plain HTML components.
 ## Install
 
 ```bash
-npm i json-form-render react-hook-form zod @hookform/resolvers
+npm i schema-form-engine react-hook-form zod @hookform/resolvers
 ```
 
 ## Quick start
 
 ```tsx
-import { FormRender } from "json-form-render";
-import { htmlComponents } from "json-form-render/adapters/html"; // built-in unstyled adapter
+import { FormRender } from "schema-form-engine";
+import { htmlComponents } from "schema-form-engine/adapters/html"; // built-in unstyled adapter
 import { postgresSchema } from "./postgres";
 
 export function ConnectionForm() {
@@ -56,7 +56,7 @@ The shadcn adapter must live in *your* source tree (it imports your own
 it **and** installs the shadcn components it uses:
 
 ```bash
-npx json-form-render add shadcn
+npx schema-form-engine add shadcn
 # → writes src/lib/form-render-shadcn.tsx (aliases matched to your components.json)
 # → writes src/components/ui/dropzone.tsx (the file field's drag-and-drop input)
 # → runs `shadcn add input textarea checkbox switch select radio-group label button field …`
@@ -72,7 +72,7 @@ npx json-form-render add shadcn
   `tooltip`. The CLI runs `shadcn add` for these.
 - **npm deps** — `react-dropzone` and `lucide-react`. The CLI installs both.
 - **Peers** — `react`, `react-dom`, `react-hook-form`, `zod`,
-  `@hookform/resolvers` (the same ones any `json-form-render` install needs).
+  `@hookform/resolvers` (the same ones any `schema-form-engine` install needs).
 
 The CLI prints this list when it finishes, so you always see what's required vs.
 what it installed.
@@ -86,7 +86,7 @@ run `shadcn init` for you.
 Then wire it up:
 
 ```tsx
-import { FormRender } from "json-form-render";
+import { FormRender } from "schema-form-engine";
 import { shadcnComponents, shadcnSlots } from "./lib/form-render-shadcn";
 
 <FormRender
@@ -130,7 +130,7 @@ always receive `aria-invalid` so the input's red ring works regardless.
 Override just one piece by spreading the defaults:
 
 ```tsx
-import { defaultSlots } from "json-form-render";
+import { defaultSlots } from "schema-form-engine";
 <FormRender slots={{ ...defaultSlots, Actions: MyActions }} … />
 ```
 
@@ -145,7 +145,7 @@ Want a batteries-included look without writing CSS? Import the **optional**
 prebuilt stylesheet:
 
 ```tsx
-import "json-form-render/styles.css";
+import "schema-form-engine/styles.css";
 ```
 
 It's a self-contained default theme scoped to `.fr-form` (so it won't touch the
