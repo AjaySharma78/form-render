@@ -5,6 +5,8 @@ schema (validation) and drives **React Hook Form** (state). The UI is rendered
 through an **injected component map**, so the core ships zero UI — bring your own
 shadcn (recommended), MUI, or plain HTML components.
 
+📖 **[Docs & live playground →](https://schema-form-engine.vercel.app/)**
+
 ## Why
 
 - **One schema, full form.** Layout, conditional fields, validation, multi-step

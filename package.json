@@ -11,7 +11,7 @@
     "type": "git",
     "url": "git+https://github.com/AjaySharma78/form-render.git"
   },
-  "homepage": "https://github.com/AjaySharma78/form-render#readme",
+  "homepage": "https://schema-form-engine.vercel.app",
   "bugs": "https://github.com/AjaySharma78/form-render/issues",
   "bin": {
     "form-render": "bin/form-render.mjs"
