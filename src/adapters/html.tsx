@@ -4,14 +4,13 @@
  * component contract. For shadcn, copy templates/shadcn-adapter.tsx into your
  * app (it imports your own @/components/ui/*).
  */
-import type { ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import type { ComponentMap, FieldComponentProps } from "../types";
 import { cn } from "../utils/cn";
 
 const TEXT_LIKE = [
   "text",
   "email",
-  "password",
   "search",
   "tel",
   "url",
@@ -51,6 +50,37 @@ function TextInput(p: FieldComponentProps<string>) {
       {field.prefix && <span className="fr-addon fr-prefix">{t(field.prefix)}</span>}
       {input}
       {field.suffix && <span className="fr-addon fr-suffix">{t(field.suffix)}</span>}
+    </span>
+  );
+}
+
+/** Password input with a built-in show/hide toggle (dependency-free). */
+function PasswordInput(p: FieldComponentProps<string>) {
+  const { field, t } = p;
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="fr-password">
+      <input
+        id={p.id}
+        type={visible ? "text" : "password"}
+        className={ctrlClass(p)}
+        value={p.value ?? ""}
+        placeholder={field.placeholder ? t(field.placeholder) : undefined}
+        disabled={p.disabled}
+        readOnly={field.readOnly}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => p.onChange(e.target.value)}
+        onBlur={p.onBlur}
+      />
+      <button
+        type="button"
+        className="fr-password-toggle"
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        disabled={p.disabled}
+        onClick={() => setVisible((v) => !v)}
+      >
+        {visible ? "Hide" : "Show"}
+      </button>
     </span>
   );
 }
@@ -271,6 +301,7 @@ function HiddenInput(p: FieldComponentProps<string>) {
 
 export const htmlComponents: ComponentMap = {
   ...Object.fromEntries(TEXT_LIKE.map((t) => [t, TextInput])),
+  password: PasswordInput,
   number: NumberInput,
   range: NumberInput,
   textarea: TextArea,
