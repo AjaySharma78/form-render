@@ -1,6 +1,6 @@
 {
   "name": "schema-form-engine",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Headless, JSON-driven React form engine. Declarative schema compiled to Zod + React Hook Form, rendered through an injectable component adapter (shadcn-ready).",
   "type": "module",
   "license": "MIT",

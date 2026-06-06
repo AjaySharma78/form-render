@@ -42,7 +42,7 @@ import type {
 } from "schema-form-engine";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { BadgeQuestionMark, CheckIcon, ChevronDownIcon, FileIcon, X } from "lucide-react";
+import { BadgeQuestionMark, CheckIcon, ChevronDownIcon, Eye, EyeOff, FileIcon, X } from "lucide-react";
 import type { Accept, FileRejection } from "react-dropzone";
 
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const TEXT_LIKE = [
   "text",
   "email",
-  "password",
   "search",
   "tel",
   "url",
@@ -153,6 +152,39 @@ function TextField(p: FieldComponentProps<string>) {
       onChange={(e) => p.onChange(e.target.value)}
       onBlur={p.onBlur}
     />
+  );
+}
+
+// Password field with a built-in show/hide toggle.
+function PasswordField(p: FieldComponentProps<string>) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={p.id}
+        type={visible ? "text" : "password"}
+        className={cn("pr-10", p.field.className, p.field.classNames?.control)}
+        value={p.value ?? ""}
+        placeholder={p.field.placeholder ? p.t(p.field.placeholder) : undefined}
+        disabled={p.disabled}
+        readOnly={p.field.readOnly}
+        onChange={(e) => p.onChange(e.target.value)}
+        onBlur={p.onBlur}
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        tabIndex={-1}
+        disabled={p.disabled}
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        onClick={() => setVisible((v) => !v)}
+        className="text-muted-foreground absolute top-1/2 right-1 size-7 -translate-y-1/2 hover:bg-transparent"
+      >
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </Button>
+    </div>
   );
 }
 
@@ -410,6 +442,7 @@ function FileField(p: FieldComponentProps<File | File[] | undefined>) {
 
 export const shadcnComponents: ComponentMap = {
   ...Object.fromEntries(TEXT_LIKE.map((t) => [t, TextField])),
+  password: PasswordField,
   number: NumberField,
   range: NumberField,
   textarea: TextAreaField,

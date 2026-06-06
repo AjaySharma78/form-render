@@ -113,6 +113,38 @@
 .fr-form .fr-field[data-invalid="true"] .fr-control {
   border-color: var(--fr-danger);
 }
+/* password field with show/hide toggle */
+.fr-form .fr-password {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.fr-form .fr-password .fr-control {
+  flex: 1 1 auto;
+  width: auto;
+  padding-right: 3.75rem;
+}
+.fr-form .fr-password-toggle {
+  position: absolute;
+  right: 0.35rem;
+  padding: 0.25rem 0.45rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fr-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--fr-radius);
+  cursor: pointer;
+}
+.fr-form .fr-password-toggle:hover:not(:disabled) {
+  color: var(--fr-fg);
+  background: var(--fr-subtle-bg);
+}
+.fr-form .fr-password-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .fr-form .fr-field[data-type="checkbox"] .fr-control,
 .fr-form .fr-field[data-type="switch"] .fr-control {
   width: auto;
