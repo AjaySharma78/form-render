@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1 (2026-07-15)
+
+- Ship `MIGRATION.md` and `CHANGELOG.md` inside the npm package (the README
+  linked to them, but they were missing from the tarball).
+- Releases are now published from CI with npm provenance.
+
 ## 2.0.0 (2026-07-15)
 
 The "describe it, don't build it" release. Full details: [MIGRATION.md](./MIGRATION.md),
