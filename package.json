@@ -21,7 +21,9 @@
     "templates",
     "bin",
     "styles.css",
-    "schema.json"
+    "schema.json",
+    "MIGRATION.md",
+    "CHANGELOG.md"
   ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

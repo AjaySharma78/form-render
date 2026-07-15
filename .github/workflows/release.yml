@@ -1,0 +1,36 @@
+# Publishes to npm with cryptographic provenance (OIDC trusted publishing —
+# no token secret needed). Trigger: push a version tag, e.g.
+#   npm version patch && git push --follow-tags
+#
+# One-time setup on npmjs.com → schema-form-engine → Settings → Trusted Publisher:
+#   Provider: GitHub Actions
+#   Repository: AjaySharma78/form-render
+#   Workflow filename: release.yml
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write # OIDC — lets npm verify this build came from this repo
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # trusted publishing + provenance need a recent npm
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx vitest run
+      - run: npm publish --provenance --access public
