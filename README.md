@@ -19,12 +19,12 @@ shadcn (recommended), MUI, or plain HTML components.
 ## Install
 
 ```bash
-npm i schema-form-engine@next react-hook-form zod @hookform/resolvers
+npm i schema-form-engine react-hook-form zod @hookform/resolvers
 ```
 
-> **v2 is a release candidate** on the `next` tag — plain
-> `npm i schema-form-engine` still installs v1 (0.1.3) until 2.0.0 goes stable.
-> Using Zod 4? Pair it with `@hookform/resolvers@^5`.
+> Needs `zod ≥3.25`. Using Zod 4? Pair it with `@hookform/resolvers@^5`.
+> Upgrading from v1? See [MIGRATION.md](./MIGRATION.md) — v1 stays available as
+> `schema-form-engine@0.1.3`.
 
 ## Quick start
 
