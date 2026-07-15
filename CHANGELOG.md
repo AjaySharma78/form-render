@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (unreleased — rc)
+## 2.0.0 (2026-07-15)
 
 The "describe it, don't build it" release. Full details: [MIGRATION.md](./MIGRATION.md),
 [docs/PRD-v2.md](./docs/PRD-v2.md).
