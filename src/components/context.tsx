@@ -1,17 +1,31 @@
 import { createContext, useContext } from "react";
+import type { AsyncRegistry } from "../engine/async";
+import type { UploadRegistry } from "../engine/uploads";
 import type {
   ComponentMap,
   FieldClassNames,
   FormSlots,
+  FormulaMap,
   LoaderMap,
   ResolverMap,
   TranslateFn,
+  UploaderMap,
 } from "../types";
 
 export interface FormRenderContextValue {
   components: ComponentMap;
   resolvers: ResolverMap;
   loaders: LoaderMap;
+  formulas: FormulaMap;
+  uploaders: UploaderMap;
+  /** per-field async validation state (blur + submit-gate runs) */
+  asyncRegistry: AsyncRegistry;
+  /** per-file upload progress (file fields with `upload`) */
+  uploadRegistry: UploadRegistry;
+  /** grid columns from settings.columns (default 12) */
+  columns: number;
+  /** settings.hiddenValues (default "clear") */
+  hiddenValues: "clear" | "keep";
   t: TranslateFn;
   /** resolved UI slots (defaults merged with consumer overrides) */
   slots: FormSlots;

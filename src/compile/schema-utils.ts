@@ -1,7 +1,7 @@
 import type { Field, FormSchema, Step } from "../types";
 
 /** All steps as an array (single-page schemas are normalized to one synthetic step). */
-export function getSteps(schema: FormSchema): Step[] {
+export function getSteps(schema: FormSchema): readonly Step[] {
   if (schema.steps && schema.steps.length > 0) return schema.steps;
   return [
     {

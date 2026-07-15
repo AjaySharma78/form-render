@@ -9,7 +9,7 @@
  * not in node_modules. Adjust the import paths to match your setup.
  *
  * Prereqs (your app must have Tailwind + shadcn set up — `npx shadcn@latest init`):
- *   npx shadcn@latest add input textarea checkbox switch select radio-group label button field popover command tooltip
+ *   npx shadcn@latest add input textarea checkbox switch select radio-group label button field popover command tooltip calendar
  *   npm i react-dropzone lucide-react   (the file-field Dropzone + the icons used here)
  *
  * The file field uses a drag-and-drop Dropzone:
@@ -28,6 +28,8 @@
  *   />
  */
 import type {
+  ArrayFieldSlotProps,
+  ArrayItemSlotProps,
   ButtonSlotProps,
   CellSlotProps,
   ComponentMap,
@@ -41,11 +43,27 @@ import type {
   StepperSlotProps,
 } from "schema-form-engine";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
-import { BadgeQuestionMark, CheckIcon, ChevronDownIcon, FileIcon, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  BadgeQuestionMark,
+  CalendarIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Eye,
+  EyeOff,
+  FileIcon,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { Accept, FileRejection } from "react-dropzone";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Dropzone, DropzoneContent, DropzoneEmptyState } from "@/components/ui/dropzone";
 import {
   Command,
@@ -71,20 +89,8 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const TEXT_LIKE = [
-  "text",
-  "email",
-  "password",
-  "search",
-  "tel",
-  "url",
-  "color",
-  "date",
-  "datetime-local",
-  "month",
-  "time",
-  "week",
-] as const;
+// date / datetime-local / month get shadcn Calendar pickers (below) instead
+const TEXT_LIKE = ["text", "email", "search", "tel", "url", "color", "time", "week"] as const;
 
 const BUTTON_VARIANT = { primary: "default", secondary: "secondary", outline: "outline" } as const;
 
@@ -101,21 +107,30 @@ export function ShadcnFieldWrapper({
   id,
   label,
   description,
+  tooltip,
   error,
   required,
   invalid,
+  validating,
+  descriptionId,
+  errorId,
   children,
 }: FieldWrapperProps) {
+  // field.tooltip wins the help icon; description falls back into it
+  const hint = tooltip ?? description;
   return (
-    <Field data-invalid={invalid} orientation={HORIZONTAL.has(field.type) ? "horizontal" : "vertical"}>
+    <Field
+      data-invalid={invalid}
+      aria-busy={validating || undefined}
+      orientation={HORIZONTAL.has(field.type) ? "horizontal" : "vertical"}
+    >
       {label && (
-        <FieldLabel htmlFor={id} className="flex items-center gap-1.5">
+        <FieldLabel htmlFor={id} id={`${id}-label`} className="flex items-center gap-1.5">
           <span>
             {label}
             {required && <span className="text-destructive"> *</span>}
           </span>
-          {/* description shown in a tooltip on a help icon next to the label */}
-          {description && (
+          {hint && (
             <TooltipProvider delayDuration={150}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -126,7 +141,7 @@ export function ShadcnFieldWrapper({
                   />
                 </TooltipTrigger>
                 <TooltipContent side="top" align="center">
-                  {description}
+                  {hint}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -134,7 +149,17 @@ export function ShadcnFieldWrapper({
         </FieldLabel>
       )}
       {children}
-      {error && <FieldError errors={[{ message: error }]} />}
+      {/* the visible description lives in the tooltip; give aria-describedby a real node */}
+      {description && (
+        <span id={descriptionId} className="sr-only">
+          {description}
+        </span>
+      )}
+      {error && (
+        <span id={errorId}>
+          <FieldError errors={[{ message: error }]} />
+        </span>
+      )}
     </Field>
   );
 }
@@ -153,6 +178,39 @@ function TextField(p: FieldComponentProps<string>) {
       onChange={(e) => p.onChange(e.target.value)}
       onBlur={p.onBlur}
     />
+  );
+}
+
+// Password field with a built-in show/hide toggle.
+function PasswordField(p: FieldComponentProps<string>) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={p.id}
+        type={visible ? "text" : "password"}
+        className={cn("pr-10", p.field.className, p.field.classNames?.control)}
+        value={p.value ?? ""}
+        placeholder={p.field.placeholder ? p.t(p.field.placeholder) : undefined}
+        disabled={p.disabled}
+        readOnly={p.field.readOnly}
+        onChange={(e) => p.onChange(e.target.value)}
+        onBlur={p.onBlur}
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        tabIndex={-1}
+        disabled={p.disabled}
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        onClick={() => setVisible((v) => !v)}
+        className="text-muted-foreground absolute top-1/2 right-1 size-7 -translate-y-1/2 hover:bg-transparent"
+      >
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </Button>
+    </div>
   );
 }
 
@@ -408,8 +466,231 @@ function FileField(p: FieldComponentProps<File | File[] | undefined>) {
   );
 }
 
+// ── date pickers (shadcn Calendar in a Popover; values stay ISO strings) ──
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+// hoisted: Intl formatter construction is expensive — never do it per render
+const DATE_FMT = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+const MONTH_FMT = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
+
+function parseISODate(s: string | undefined): Date | undefined {
+  if (!s || !/^\d{4}-\d{2}-\d{2}/.test(s)) return undefined;
+  const [y, m, d] = s.slice(0, 10).split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+const toISODate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+function dateBounds(field: FieldComponentProps["field"]) {
+  const min = typeof field.min === "string" ? parseISODate(field.min) : undefined;
+  const max = typeof field.max === "string" ? parseISODate(field.max) : undefined;
+  return [...(min ? [{ before: min }] : []), ...(max ? [{ after: max }] : [])];
+}
+
+function pickerTriggerClass(p: FieldComponentProps<string>, empty: boolean) {
+  return cn(
+    "w-full justify-start text-left font-normal",
+    empty && "text-muted-foreground",
+    p.field.className,
+    p.field.classNames?.control,
+  );
+}
+
+/** `date` — value "yyyy-MM-dd". */
+function DateField(p: FieldComponentProps<string>) {
+  const [open, setOpen] = useState(false);
+  const selected = parseISODate(p.value);
+  const disabledDays = dateBounds(p.field);
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) p.onBlur();
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          id={p.id}
+          type="button"
+          variant="outline"
+          disabled={p.disabled}
+          aria-invalid={p.error ? true : undefined}
+          aria-describedby={p.describedBy}
+          className={pickerTriggerClass(p, !selected)}
+        >
+          <CalendarIcon className="size-4" />
+          {selected
+            ? DATE_FMT.format(selected)
+            : p.field.placeholder
+              ? p.t(p.field.placeholder)
+              : "Pick a date"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          disabled={disabledDays.length ? disabledDays : undefined}
+          onSelect={(d) => {
+            p.onChange(d ? toISODate(d) : "");
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** `datetime-local` — value "yyyy-MM-ddTHH:mm" (Calendar + a time input). */
+function DateTimeField(p: FieldComponentProps<string>) {
+  const [open, setOpen] = useState(false);
+  const [datePart = "", timePart = ""] = (p.value ?? "").split("T");
+  const selected = parseISODate(datePart);
+  const disabledDays = dateBounds(p.field);
+  const commit = (d: string, t: string) => p.onChange(d ? `${d}T${t || "00:00"}` : "");
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) p.onBlur();
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          id={p.id}
+          type="button"
+          variant="outline"
+          disabled={p.disabled}
+          aria-invalid={p.error ? true : undefined}
+          aria-describedby={p.describedBy}
+          className={pickerTriggerClass(p, !selected)}
+        >
+          <CalendarIcon className="size-4" />
+          {selected
+            ? `${DATE_FMT.format(selected)}${timePart ? ` · ${timePart}` : ""}`
+            : p.field.placeholder
+              ? p.t(p.field.placeholder)
+              : "Pick date & time"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          disabled={disabledDays.length ? disabledDays : undefined}
+          onSelect={(d) => commit(d ? toISODate(d) : "", timePart)}
+        />
+        <div className="border-t p-3">
+          <Input
+            type="time"
+            aria-label="Time"
+            value={timePart}
+            disabled={!selected}
+            onChange={(e) => commit(datePart, e.target.value)}
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** `month` — value "yyyy-MM" (year stepper + month grid, shadcn primitives only). */
+function MonthField(p: FieldComponentProps<string>) {
+  const [open, setOpen] = useState(false);
+  const value = /^\d{4}-\d{2}$/.test(p.value ?? "") ? p.value! : "";
+  const [year, setYear] = useState(() =>
+    value ? Number(value.slice(0, 4)) : new Date().getFullYear(),
+  );
+  const monthNames = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) =>
+        new Intl.DateTimeFormat(undefined, { month: "short" }).format(new Date(2000, i, 1)),
+      ),
+    [],
+  );
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) p.onBlur();
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          id={p.id}
+          type="button"
+          variant="outline"
+          disabled={p.disabled}
+          aria-invalid={p.error ? true : undefined}
+          aria-describedby={p.describedBy}
+          className={pickerTriggerClass(p, !value)}
+        >
+          <CalendarIcon className="size-4" />
+          {value
+            ? MONTH_FMT.format(new Date(Number(value.slice(0, 4)), Number(value.slice(5, 7)) - 1, 1))
+            : p.field.placeholder
+              ? p.t(p.field.placeholder)
+              : "Pick a month"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3" align="start">
+        <div className="mb-2 flex items-center justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            aria-label="Previous year"
+            onClick={() => setYear((y) => y - 1)}
+          >
+            <ChevronLeftIcon className="size-4" />
+          </Button>
+          <span className="text-sm font-medium">{year}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            aria-label="Next year"
+            onClick={() => setYear((y) => y + 1)}
+          >
+            <ChevronRightIcon className="size-4" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-4 gap-1">
+          {monthNames.map((label, i) => {
+            const monthValue = `${year}-${pad2(i + 1)}`;
+            return (
+              <Button
+                key={label}
+                type="button"
+                size="sm"
+                variant={value === monthValue ? "default" : "ghost"}
+                onClick={() => {
+                  p.onChange(monthValue);
+                  setOpen(false);
+                }}
+              >
+                {label}
+              </Button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export const shadcnComponents: ComponentMap = {
   ...Object.fromEntries(TEXT_LIKE.map((t) => [t, TextField])),
+  password: PasswordField,
   number: NumberField,
   range: NumberField,
   textarea: TextAreaField,
@@ -419,6 +700,9 @@ export const shadcnComponents: ComponentMap = {
   multiselect: MultiSelectField,
   radio: RadioField,
   file: FileField,
+  date: DateField,
+  "datetime-local": DateTimeField,
+  month: MonthField,
 } as ComponentMap;
 
 // ── layout slots: shadcn primitives + Tailwind (no custom CSS) ──
@@ -501,6 +785,90 @@ function Actions({ children }: ContainerSlotProps) {
   return <div className="flex items-center gap-2 mt-8 [&>*:last-child]:ms-auto">{children}</div>;
 }
 
+/** Repeatable group container: label + rows + Add button, error styled like FieldError. */
+function ArrayFieldSlot({
+  field,
+  label,
+  description,
+  error,
+  onAdd,
+  addLabel,
+  children,
+}: ArrayFieldSlotProps) {
+  return (
+    <fieldset
+      className={cn("space-y-3 rounded-lg border p-4", error && "border-destructive")}
+      data-field={field.name}
+    >
+      {label && <legend className="px-1 text-sm font-semibold">{label}</legend>}
+      {description && <p className="text-sm text-muted-foreground">{description}</p>}
+      <div className="space-y-3">{children}</div>
+      {error && (
+        <p role="alert" className="text-sm font-medium text-destructive">
+          {error}
+        </p>
+      )}
+      <Button type="button" variant="secondary" size="sm" disabled={!onAdd} onClick={onAdd}>
+        <Plus className="size-4" />
+        {addLabel}
+      </Button>
+    </fieldset>
+  );
+}
+
+/** One row of a repeatable group: the row grid + remove/reorder controls. */
+function ArrayItemSlot({
+  index,
+  onRemove,
+  removeLabel,
+  onMoveUp,
+  onMoveDown,
+  children,
+}: ArrayItemSlotProps) {
+  const sortable = onMoveUp !== undefined || onMoveDown !== undefined;
+  return (
+    <div className="flex items-start gap-2 rounded-md border bg-muted/30 p-3">
+      <div className="min-w-0 flex-1">{children}</div>
+      <div className="flex flex-col gap-1">
+        {sortable && (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Move item ${index + 1} up`}
+              disabled={!onMoveUp}
+              onClick={onMoveUp}
+            >
+              <ArrowUp className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Move item ${index + 1} down`}
+              disabled={!onMoveDown}
+              onClick={onMoveDown}
+            >
+              <ArrowDown className="size-4" />
+            </Button>
+          </>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`${removeLabel} item ${index + 1}`}
+          disabled={!onRemove}
+          onClick={onRemove}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /** Full shadcn slot bundle — <FormRender slots={shadcnSlots} /> renders with zero custom markup. */
 export const shadcnSlots: Partial<FormSlots> = {
   Button: FormButton,
@@ -512,4 +880,6 @@ export const shadcnSlots: Partial<FormSlots> = {
   Grid,
   Cell,
   Actions,
+  ArrayField: ArrayFieldSlot,
+  ArrayItem: ArrayItemSlot,
 };

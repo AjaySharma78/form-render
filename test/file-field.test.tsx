@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FormRender } from "../src/components/FormRender";
@@ -83,9 +83,12 @@ describe("file fields + persistence", () => {
 
     await user.upload(screen.getByLabelText("Docs") as HTMLInputElement, [file("a.txt"), file("b.txt")]);
 
-    const saved = JSON.parse(window.sessionStorage.getItem("form-render:persist-files") ?? "{}");
-    // Files are stripped, not serialized to empty objects.
-    expect(saved.docs).toEqual([]);
+    // v2 payload shape is { __v, values }; writes are debounced
+    await waitFor(() => {
+      const saved = JSON.parse(window.sessionStorage.getItem("form-render:persist-files") ?? "{}");
+      // Files are stripped, not serialized to empty objects.
+      expect(saved.values?.docs).toEqual([]);
+    });
   });
 
   it("ignores a corrupt restored draft instead of rendering NaN-MB phantom rows", () => {

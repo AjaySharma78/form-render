@@ -22,6 +22,10 @@ shadcn (recommended), MUI, or plain HTML components.
 npm i schema-form-engine react-hook-form zod @hookform/resolvers
 ```
 
+> Needs `zod ≥3.25`. Using Zod 4? Pair it with `@hookform/resolvers@^5`.
+> Upgrading from v1? See [MIGRATION.md](./MIGRATION.md) — v1 stays available as
+> `schema-form-engine@0.1.3`.
+
 ## Quick start
 
 ```tsx
@@ -71,7 +75,8 @@ npx schema-form-engine add shadcn
   offers to run `shadcn init` if it isn't.
 - **shadcn UI components** — `input`, `textarea`, `checkbox`, `switch`,
   `select`, `radio-group`, `label`, `button`, `field`, `popover`, `command`,
-  `tooltip`. The CLI runs `shadcn add` for these.
+  `tooltip`, `calendar` (date/datetime/month pickers). The CLI runs
+  `shadcn add` for these.
 - **npm deps** — `react-dropzone` and `lucide-react`. The CLI installs both.
 - **Peers** — `react`, `react-dom`, `react-hook-form`, `zod`,
   `@hookform/resolvers` (the same ones any `schema-form-engine` install needs).
@@ -104,6 +109,38 @@ import { shadcnComponents, shadcnSlots } from "./lib/form-render-shadcn";
 > `shadcn add …` components listed above). The CLI just writes them for you,
 > strips the template banner, and rewrites the `@/` imports to match your
 > `components.json` aliases.
+
+## ✨ Generate forms with AI (v2)
+
+The schema is designed to be **LLM-generatable** — describe a form (or paste a
+screenshot) and render the result directly:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-…        # or OPENAI_API_KEY / GOOGLE_API_KEY
+npx schema-form-engine generate "a job application form with repeatable work \
+  experience, resume upload (pdf, max 5MB) and a review step" --out job.json
+npx schema-form-engine validate job.json # exit-code checked — CI-friendly
+```
+
+Or server-side, with zero extra dependencies:
+
+```ts
+import { generateFormSchema } from "schema-form-engine/ai";
+
+const { schema } = await generateFormSchema({
+  prompt: "an event registration form with ticket quantity and computed total",
+  provider: "anthropic",                 // or "openai" | "google"
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  // image: { base64, mediaType: "image/png" },  ← screenshot → working form
+});
+// already validated — render it: <FormRender schema={schema} … />
+```
+
+Output is checked with `validateSchema`; invalid attempts get one automatic
+repair round with the errors fed back. Building your own agent? Import
+`AI_SYSTEM_PROMPT` and the official JSON Schema
+(`schema-form-engine/schema.json`) — add `"$schema"` to your form files for
+editor autocomplete. Details in [docs/ai-prompt.md](docs/ai-prompt.md).
 
 ## Injectable slots — zero custom UI
 
@@ -184,14 +221,21 @@ Key concepts:
 
 | Concept | Field/Schema key |
 |---|---|
-| Conditional rendering | `visibleWhen` (`is`/`not`/`in`/`gt`/`lt`/`gte`/`lte`/`notEmpty`, nest with `all`/`any`) |
-| Conditional required/disabled | `requiredWhen`, `disabledWhen` |
+| Conditional rendering | `visibleWhen` (`is`/`not`/`in`/`gt`/`lt`/`gte`/`lte`/`notEmpty`/`isEmpty`/`matches`/`contains`/`containsAny`, nest with `all`/`any`; compare fields with `{ "$field": "other" }`) |
+| Conditional required/disabled | `requiredWhen`, `disabledWhen` (full condition trees) |
 | Validation → Zod | `validation` (`required`, `pattern`, `min`/`max`, `minLength`, `email`, `url`, `maxSize`…) |
-| Cross-field rules | top-level `rules` |
-| Async validation | `asyncValidation.resolver` + `resolvers` prop |
-| Dynamic options | `optionsSource.loader` + `loaders` prop |
+| Cross-field rules | top-level `rules` (`equals`/`gt`/…/`requiredIf`, or `{ "type": "custom", "validator": "name" }` + `validators` prop) |
+| Async validation | `asyncValidation.resolver` + `resolvers` prop — runs on blur AND is re-checked at submit; in-flight state exposed as `validating` and gates the submit button |
+| Dynamic options | `optionsSource.loader` + `loaders` prop (receives an `AbortSignal`; components get `optionsState.loading`/`error`) |
 | Layout | per-field `width`, or explicit `layout` rows (on a step **or** a section); `sections` for grouping |
-| Multi-step | `steps[]`; gated nav with auto Back/Next/Finish; steps can be `visibleWhen` |
+| Multi-step | `steps[]`; gated nav with auto Back/Next/Finish; steps can be `visibleWhen`; `onStepChange`, controlled `step`/`onStepRequest`, clickable stepper for visited steps, and `review: true` summary steps (v2) |
+| Input masks (v2) | `mask: "(999) 999-9999"` (`9` digit, `a` letter, `*` alphanumeric) — masked display, raw value submitted |
+| Tooltips & grid (v2) | `tooltip` renders as a label help hint; `settings.columns` sets the grid base (default 12) |
+| Hidden values (v2) | `settings.hiddenValues: "keep"` preserves values across hide/show while still excluding them from validation + payload |
+| Repeatable groups (v2) | `type: "array"` + `item.fields`; add/remove/reorder rows; `validation.minItems`/`maxItems`; row conditions use sibling names, `$.` escapes to root; nested to 3 levels |
+| Typed values (v2) | `defineSchema(...)` + `InferValues<typeof schema>`; `<FormRender<Values>>` types `onSubmit` |
+| Computed fields (v2) | `computed: { formula, inputs }` + `formulas` prop; recomputes on mount + input change; read-only unless `editable`; works per-row in arrays |
+| Reactions (v2) | `effects: [{ when, set }]` on the triggering field — static value writes on change (never on mount); cycles rejected at dev time |
 | Files | `type: "file"`, `accept`, `multiple` (value is `File`/`File[]`); `validation.maxSize`/`maxFiles`/`fileTypes`; drag-and-drop UI in both adapters |
 | i18n | any string is a key resolved by the `t` prop |
 | Styling | `className`, `classNames` slots, plus stable `.fr-*` classes + `data-field`/`data-type`/`data-invalid` |
@@ -242,14 +286,55 @@ Two gotchas:
   per-record), so a saved draft can override your prefill or leak between records.
   Leave `persist` off for edit forms.
 
+### Drafts & schema versions (v2)
+
+Persisted drafts are saved as `{ __v: schema.version, values }` (debounced) and
+**cleared automatically after a successful submit**. A draft saved under a
+different `schema.version` is discarded — unless you pass `migrateDraft` to
+upgrade it:
+
+```tsx
+<FormRender
+  schema={schemaV3}
+  migrateDraft={(draft, savedVersion) =>
+    savedVersion === 2 ? { ...draft, fullName: draft.name } : null /* discard */
+  }
+  …
+/>
+```
+
 ## Uploading files
 
 A `file` field is **selection-only**: it holds `File` / `File[]` in form state
 and Zod validates `maxSize`/`maxFiles`/`fileTypes` on those objects. Drag-and-drop
-works out of the box in both adapters — dragging files just populates state. The
-library never uploads for you; you choose *where* to upload.
+works out of the box in both adapters — dragging files just populates state.
 
-**Option A — upload in `onSubmit` (recommended).** When the user hits Save, upload
+**Option A — built-in upload-on-select (v2, recommended).** Name an uploader on
+the field and inject the function; the engine uploads the moment a file is
+picked, shows per-file progress (`uploads` prop in the file component), aborts
+when a file is removed, **disables submit while uploads are in flight**, and
+swaps `File → URL` in the payload before `onSubmit`:
+
+```tsx
+// schema: { "name": "attachments", "type": "file", "multiple": true, "upload": "s3" }
+<FormRender
+  schema={schema}
+  components={htmlComponents}
+  uploaders={{
+    s3: async (file, { signal, onProgress }) => {
+      const { uploadUrl, publicUrl } = await getPresignedUrl(file, { signal });
+      await putWithProgress(uploadUrl, file, { signal, onProgress });
+      return publicUrl; // ← what onSubmit receives instead of the File
+    },
+  }}
+  onSubmit={saveToBackend}   // values.attachments is string[] of URLs
+/>;
+```
+
+Zod still validates the real `File` objects (`maxSize`/`fileTypes`); only the
+submitted payload carries URLs. Failed uploads block submit with a field error.
+
+**Option B — upload in `onSubmit`.** When the user hits Save, upload
 each file and swap the `File` for its URL before calling your backend:
 
 ```tsx
@@ -268,14 +353,13 @@ each file and swap the `File` for its URL before calling your backend:
 />;
 ```
 
-Trade-off: no per-file progress until Save. Best for most forms.
+Trade-off: no per-file progress until Save.
 
-**Option B — upload on drop, persist on submit.** To upload the moment a file is
-dropped (with progress) and have `onSubmit` only persist the URLs, inject a custom
-`file` component via the `components` map. The key idea: **form state keeps the
-`File` objects** (so Zod validation still runs) while a `ref` keyed by file holds
-the S3 result. `onSubmit` reads the ref to swap `File → URL` and gates submit while
-any upload is in flight:
+**Option C — fully custom.** For exotic flows (chunked uploads, resumable,
+client-side encryption), inject your own `file` component via the `components`
+map. The pattern: **form state keeps the `File` objects** (so Zod validation
+still runs) while a `ref` keyed by file holds the upload result; `onSubmit`
+swaps `File → URL` and gates on in-flight uploads:
 
 ```tsx
 type Up = { status: "uploading" | "done" | "error"; progress: number; url?: string };
@@ -371,10 +455,84 @@ export async function submitConnection(values: FormValues): Promise<SubmitResult
 already well-formed. Return `{ errors }` to surface server errors on specific
 fields; return nothing on success.
 
+## Repeatable groups (v2)
+
+```jsonc
+{
+  "name": "contacts", "type": "array", "label": "Contacts",
+  "addText": "Add contact", "defaultItems": 1, "sortable": true,
+  "item": {
+    "fields": [
+      { "name": "cname", "type": "text", "label": "Name",
+        "validation": { "required": { "message": "Required" } } },
+      { "name": "isPrimary", "type": "switch", "label": "Primary" },
+      { "name": "notes", "type": "text",
+        "visibleWhen": { "field": "isPrimary", "is": true } }   // row-relative
+    ],
+    "layout": [["cname", "isPrimary"], ["notes"]]
+  },
+  "validation": {
+    "minItems": { "value": 1, "message": "Add at least one" },
+    "maxItems": { "value": 5, "message": "Max 5" }
+  }
+}
+```
+
+Submitted value: `contacts: [{ cname, isPrimary, notes }, …]`. Conditions inside
+rows address **row siblings** by bare name; prefix with `$.` to reference a
+root-level field (`{ "field": "$.plan", "is": "pro" }`). Arrays nest up to 3
+levels. The Add/Remove/Move controls render through two new injectable slots,
+`ArrayField` and `ArrayItem` (default `fr-array*` markup; shadcn versions ship
+in the template).
+
+## Computed fields & reactions (v2)
+
+Derived values live in the schema; the math is injected (so JSON stays serializable):
+
+```jsonc
+{ "name": "qty",   "type": "number", "default": 1 },
+{ "name": "price", "type": "number", "default": 0 },
+{ "name": "total", "type": "number",
+  "computed": { "formula": "lineTotal", "inputs": ["qty", "price"] } }
+```
+
+```tsx
+<FormRender
+  schema={schema}
+  formulas={{ lineTotal: ({ qty, price }) => (Number(qty) || 0) * (Number(price) || 0) }}
+  …
+/>
+```
+
+Computed fields derive on mount and whenever an input changes, render read-only
+(pass `"editable": true` to allow manual overrides), and work **per row** inside
+arrays — inputs use row-sibling names, `$.` reaches the root, and a whole array
+can be an input (`"inputs": ["items", "taxRate"]` for a grand total). See
+[`examples/invoice.ts`](examples/invoice.ts) for the full line-items + totals demo.
+
+Reactions are declared on the field that triggers them — no code needed for
+static writes:
+
+```jsonc
+{ "name": "country", "type": "select", "options": [...],
+  "effects": [
+    { "when": { "field": "country", "notEmpty": true }, "set": { "state": "" } },
+    { "when": { "field": "country", "is": "US" }, "set": { "currency": "USD" } }
+  ] }
+```
+
+Effects fire on change (never on mount). `validateSchema` rejects unknown
+references and any computed/effects cycle.
+
 ## Roadmap
 
-- **v2:** repeatable groups (`type: "array"`, nested names via `useFieldArray`),
-  reactions/effects, schema migrations.
+- **v2 (in progress):** ~~repeatable groups~~ ✅, ~~typed values (`InferValues`)~~ ✅,
+  ~~computed fields + reactions~~ ✅, ~~async-validation-at-submit~~ ✅,
+  ~~richer conditions + custom rules~~ ✅, ~~loader states~~ ✅, ~~versioned drafts +
+  migrations~~ ✅, ~~polish pack (a11y, masks, tooltips, wizard upgrades, review
+  steps)~~ ✅ — engine + polish complete (beta.2). Next: AI schema generation,
+  JSON Schema publishing, playground v2, launch.
+  See [docs/PRD-v2.md](docs/PRD-v2.md) and [docs/TASKS-v2.md](docs/TASKS-v2.md).
 
 ## License
 

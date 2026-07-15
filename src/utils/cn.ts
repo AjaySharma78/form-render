@@ -4,16 +4,16 @@ export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }
 
-/** Map a field `width` to a 12-column grid span. */
-export function widthToSpan(width: unknown): number {
-  if (typeof width === "number") return Math.min(12, Math.max(1, width));
+/** Map a field `width` to a grid span (default 12-column base; settings.columns overrides). */
+export function widthToSpan(width: unknown, columns = 12): number {
+  if (typeof width === "number") return Math.min(columns, Math.max(1, width));
   switch (width) {
     case "half":
-      return 6;
+      return Math.max(1, Math.round(columns / 2));
     case "third":
-      return 4;
+      return Math.max(1, Math.round(columns / 3));
     case "full":
     default:
-      return 12;
+      return columns;
   }
 }

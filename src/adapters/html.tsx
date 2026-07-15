@@ -4,14 +4,14 @@
  * component contract. For shadcn, copy templates/shadcn-adapter.tsx into your
  * app (it imports your own @/components/ui/*).
  */
-import type { ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import type { ComponentMap, FieldComponentProps } from "../types";
+import { fileKey } from "../engine/uploads";
 import { cn } from "../utils/cn";
 
 const TEXT_LIKE = [
   "text",
   "email",
-  "password",
   "search",
   "tel",
   "url",
@@ -27,6 +27,14 @@ function ctrlClass(p: FieldComponentProps<any>): string {
   return cn("fr-control", p.field.className, p.field.classNames?.control);
 }
 
+/** Shared accessibility wiring for every control. */
+function aria(p: FieldComponentProps<any>) {
+  return {
+    "aria-invalid": p.error ? true : undefined,
+    "aria-describedby": p.describedBy,
+  } as const;
+}
+
 function TextInput(p: FieldComponentProps<string>) {
   const { field, t } = p;
   const input = (
@@ -34,6 +42,7 @@ function TextInput(p: FieldComponentProps<string>) {
       id={p.id}
       type={field.type === "color" ? "color" : field.type}
       className={ctrlClass(p)}
+      {...aria(p)}
       value={p.value ?? ""}
       placeholder={field.placeholder ? t(field.placeholder) : undefined}
       disabled={p.disabled}
@@ -55,6 +64,38 @@ function TextInput(p: FieldComponentProps<string>) {
   );
 }
 
+/** Password input with a built-in show/hide toggle (dependency-free). */
+function PasswordInput(p: FieldComponentProps<string>) {
+  const { field, t } = p;
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="fr-password">
+      <input
+        id={p.id}
+        type={visible ? "text" : "password"}
+        className={ctrlClass(p)}
+        {...aria(p)}
+        value={p.value ?? ""}
+        placeholder={field.placeholder ? t(field.placeholder) : undefined}
+        disabled={p.disabled}
+        readOnly={field.readOnly}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => p.onChange(e.target.value)}
+        onBlur={p.onBlur}
+      />
+      <button
+        type="button"
+        className="fr-password-toggle"
+        aria-label={t(visible ? "Hide password" : "Show password")}
+        aria-pressed={visible}
+        disabled={p.disabled}
+        onClick={() => setVisible((v) => !v)}
+      >
+        {t(visible ? "Hide" : "Show")}
+      </button>
+    </span>
+  );
+}
+
 function NumberInput(p: FieldComponentProps<number | "">) {
   const { field } = p;
   return (
@@ -62,6 +103,7 @@ function NumberInput(p: FieldComponentProps<number | "">) {
       id={p.id}
       type={field.type === "range" ? "range" : "number"}
       className={ctrlClass(p as FieldComponentProps)}
+      {...aria(p)}
       value={p.value ?? ""}
       placeholder={field.placeholder ? p.t(field.placeholder) : undefined}
       disabled={p.disabled}
@@ -81,6 +123,7 @@ function TextArea(p: FieldComponentProps<string>) {
     <textarea
       id={p.id}
       className={ctrlClass(p as FieldComponentProps)}
+      {...aria(p)}
       rows={field.rows ?? 4}
       value={p.value ?? ""}
       placeholder={field.placeholder ? p.t(field.placeholder) : undefined}
@@ -98,6 +141,7 @@ function CheckboxInput(p: FieldComponentProps<boolean>) {
       id={p.id}
       type="checkbox"
       className={cn("fr-control fr-checkbox", p.field.className)}
+      {...aria(p)}
       checked={!!p.value}
       disabled={p.disabled}
       onChange={(e) => p.onChange(e.target.checked)}
@@ -108,16 +152,20 @@ function CheckboxInput(p: FieldComponentProps<boolean>) {
 
 function SelectInput(p: FieldComponentProps<string | number>) {
   const { field, t } = p;
+  const loading = p.optionsState?.loading;
   return (
     <select
       id={p.id}
       className={ctrlClass(p as FieldComponentProps)}
+      {...aria(p)}
       value={p.value ?? ""}
-      disabled={p.disabled}
+      disabled={p.disabled || loading}
+      data-loading={loading || undefined}
       onChange={(e) => p.onChange(e.target.value)}
       onBlur={p.onBlur}
     >
-      {(field.placeholder || field.clearable) && (
+      {loading && <option value="">{t("Loading…")}</option>}
+      {!loading && (field.placeholder || field.clearable) && (
         <option value="">{field.placeholder ? t(field.placeholder) : "—"}</option>
       )}
       {(field.options ?? []).map((o) => (
@@ -136,6 +184,7 @@ function MultiSelectInput(p: FieldComponentProps<(string | number)[]>) {
       id={p.id}
       multiple
       className={ctrlClass(p as FieldComponentProps)}
+      {...aria(p)}
       value={(p.value ?? []).map(String)}
       disabled={p.disabled}
       onChange={(e) => p.onChange(Array.from(e.target.selectedOptions, (o) => o.value))}
@@ -162,12 +211,19 @@ function SelectDispatch(p: FieldComponentProps<string | (string | number)[]>) {
 function RadioGroup(p: FieldComponentProps<string | number>) {
   const { field, t } = p;
   return (
-    <div className={cn("fr-control fr-radio-group", field.className)} role="radiogroup">
-      {(field.options ?? []).map((o) => (
+    <div
+      className={cn("fr-control fr-radio-group", field.className)}
+      role="radiogroup"
+      aria-labelledby={`${p.id}-label`}
+      aria-invalid={p.error ? true : undefined}
+      aria-describedby={p.describedBy}
+    >
+      {(field.options ?? []).map((o, i) => (
         <label key={String(o.value)} className="fr-radio-option">
           <input
             type="radio"
-            name={field.name}
+            id={i === 0 ? p.id : undefined}
+            name={p.id}
             value={o.value}
             checked={p.value === o.value}
             disabled={p.disabled}
@@ -244,21 +300,37 @@ function FileInput(p: FieldComponentProps<File | File[] | undefined>) {
       />
       {files.length > 0 && (
         <ul className="fr-file-list">
-          {files.map((f) => (
-            <li key={`${f.name}:${f.size}`} className="fr-file-item">
-              <span className="fr-file-name">{f.name}</span>
-              <span className="fr-file-size">{(f.size / 1024).toFixed(1)} KB</span>
-              <button
-                type="button"
-                className="fr-file-remove"
-                aria-label={`Remove ${f.name}`}
-                disabled={p.disabled}
-                onClick={() => removeFile(f.name, f.size)}
-              >
-                ×
-              </button>
-            </li>
-          ))}
+          {files.map((f) => {
+            const up = p.uploads?.[fileKey(f)];
+            return (
+              <li key={`${f.name}:${f.size}`} className="fr-file-item" data-upload={up?.status}>
+                <span className="fr-file-name">{f.name}</span>
+                <span className="fr-file-size">{(f.size / 1024).toFixed(1)} KB</span>
+                {up && (
+                  <span
+                    className="fr-file-upload"
+                    role={up.status === "uploading" ? "progressbar" : undefined}
+                    aria-valuenow={up.status === "uploading" ? up.progress : undefined}
+                  >
+                    {up.status === "uploading"
+                      ? `${Math.round(up.progress)}%`
+                      : up.status === "done"
+                        ? "✓"
+                        : "✖"}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="fr-file-remove"
+                  aria-label={`Remove ${f.name}`}
+                  disabled={p.disabled}
+                  onClick={() => removeFile(f.name, f.size)}
+                >
+                  ×
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
@@ -271,6 +343,7 @@ function HiddenInput(p: FieldComponentProps<string>) {
 
 export const htmlComponents: ComponentMap = {
   ...Object.fromEntries(TEXT_LIKE.map((t) => [t, TextInput])),
+  password: PasswordInput,
   number: NumberInput,
   range: NumberInput,
   textarea: TextArea,
