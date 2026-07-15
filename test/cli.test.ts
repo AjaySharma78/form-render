@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -77,9 +77,85 @@ describe("CLI: add shadcn", () => {
     expect(res.stdout).toMatch(/isn't initialized/);
   });
 
-  it("prints help for --help", () => {
+  it("prints help for --help, covering all commands", () => {
     const res = runCli(dir, ["--help"]);
     expect(res.status).toBe(0);
-    expect(res.stdout).toMatch(/scaffolding CLI/);
+    expect(res.stdout).toMatch(/add shadcn/);
+    expect(res.stdout).toMatch(/validate <schema.json>/);
+    expect(res.stdout).toMatch(/generate "<description>"/);
+  });
+});
+
+describe("CLI: add mui / antd", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "fr-cli-adp-"));
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("scaffolds the MUI adapter with a clean header", () => {
+    const res = runCli(dir, ["add", "mui", "--no-deps"]);
+    expect(res.status).toBe(0);
+    const file = readFileSync(join(dir, "src", "lib", "form-render-mui.tsx"), "utf8");
+    expect(file).not.toContain("@ts-nocheck");
+    expect(file).toContain("export const muiComponents");
+    expect(file).toContain("export const muiSlots");
+    expect(res.stdout).toMatch(/@mui\/material/);
+  });
+
+  it("scaffolds the antd adapter and refuses to overwrite without --force", () => {
+    expect(runCli(dir, ["add", "antd", "--no-deps"]).status).toBe(0);
+    const file = readFileSync(join(dir, "src", "lib", "form-render-antd.tsx"), "utf8");
+    expect(file).toContain("export const antdComponents");
+
+    expect(runCli(dir, ["add", "antd", "--no-deps"]).status).toBe(1);
+    expect(runCli(dir, ["add", "antd", "--no-deps", "--force"]).status).toBe(0);
+  });
+});
+
+// `validate`/`generate` import the built library — skip when dist/ is absent
+const hasDist = existsSync(resolve(process.cwd(), "dist", "index.js"));
+
+describe.skipIf(!hasDist)("CLI: validate", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "fr-cli-val-"));
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("accepts a valid schema and reports the field count", () => {
+    writeFileSync(
+      join(dir, "ok.json"),
+      JSON.stringify({ id: "ok", version: 1, fields: [{ name: "a", type: "text" }] }),
+    );
+    const res = runCli(dir, ["validate", "ok.json"]);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toMatch(/valid FormSchema/);
+    expect(res.stdout).toMatch(/1 fields/);
+  });
+
+  it("rejects an invalid schema with the collected problems and exit 1", () => {
+    writeFileSync(
+      join(dir, "bad.json"),
+      JSON.stringify({
+        id: "bad",
+        version: 1,
+        fields: [{ name: "a", type: "text", visibleWhen: { field: "ghost", is: 1 } }],
+      }),
+    );
+    const res = runCli(dir, ["validate", "bad.json"]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toMatch(/unknown field "ghost"/);
+  });
+
+  it("fails cleanly on malformed JSON and missing files", () => {
+    writeFileSync(join(dir, "broken.json"), "{ not json");
+    expect(runCli(dir, ["validate", "broken.json"]).status).toBe(1);
+    expect(runCli(dir, ["validate", "nope.json"]).status).toBe(1);
+    expect(runCli(dir, ["validate"]).status).toBe(1);
   });
 });

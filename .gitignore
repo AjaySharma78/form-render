@@ -8,3 +8,4 @@ playground/dist-docs
 .turbo
 coverage
 .mcp.json
+docs

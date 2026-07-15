@@ -1,0 +1,1216 @@
+{
+  "$ref": "#/definitions/FormSchema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "ActionFieldType": {
+      "description": "Controls that render as buttons and hold no value.",
+      "enum": [
+        "button",
+        "submit",
+        "reset",
+        "image"
+      ],
+      "type": "string"
+    },
+    "ArrayItemSpec": {
+      "additionalProperties": false,
+      "description": "What each row of an array field contains. Row fields address siblings by bare name in conditions; prefix with `$.` to reference a root-level field (e.g. `{ \"field\": \"$.plan\", \"is\": \"pro\" }`). Arrays nest up to 3 levels.",
+      "properties": {
+        "fields": {
+          "items": {
+            "$ref": "#/definitions/Field"
+          },
+          "type": "array"
+        },
+        "layout": {
+          "description": "explicit row layout inside each item; falls back to per-field width",
+          "items": {
+            "$ref": "#/definitions/LayoutRow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "fields"
+      ],
+      "type": "object"
+    },
+    "AsyncValidation": {
+      "additionalProperties": false,
+      "description": "Async validation runs on blur (debounced, abortable). The JSON names a resolver; the actual function is injected via <FormRender resolvers={...}>. Returning a string sets it as the field error; returning null/undefined clears it.",
+      "properties": {
+        "debounceMs": {
+          "type": "number"
+        },
+        "resolver": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "resolver"
+      ],
+      "type": "object"
+    },
+    "Computed": {
+      "additionalProperties": false,
+      "description": "Derived value. The JSON names a formula; the function is injected via <FormRender formulas={...}> and receives the current input values keyed by the names written here. Recomputed on mount and whenever an input changes. Inside array rows, bare input names address row siblings; `$.` = form root.",
+      "properties": {
+        "formula": {
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "formula",
+        "inputs"
+      ],
+      "type": "object"
+    },
+    "Condition": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "is": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/definitions/FieldRef"
+                }
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "is"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/definitions/FieldRef"
+                }
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "not"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "in": {
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "field",
+            "in"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "gt": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/FieldRef"
+                }
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "gt"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "lt": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/FieldRef"
+                }
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "lt"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "gte": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/FieldRef"
+                }
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "gte"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "lte": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/FieldRef"
+                }
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "lte"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "notEmpty": {
+              "const": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "field",
+            "notEmpty"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "isEmpty": {
+              "const": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "field",
+            "isEmpty"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "matches": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "field",
+            "matches"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "contains": {
+              "type": [
+                "string",
+                "number"
+              ]
+            },
+            "field": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "field",
+            "contains"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "containsAny": {
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "type": "array"
+            },
+            "field": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "field",
+            "containsAny"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ContainerFieldType": {
+      "const": "array",
+      "description": "Repeatable groups: `type: \"array\"` + an `item` spec describing each row.",
+      "type": "string"
+    },
+    "Effect": {
+      "additionalProperties": false,
+      "description": "Declarative reaction, attached to the field that triggers it: when THIS field's value changes and `when` holds, the static values in `set` are written to their target fields. Runs on change only — never on mount. Bare target names address row siblings inside arrays; `$.` = form root.",
+      "properties": {
+        "set": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "when": {
+          "$ref": "#/definitions/Visibility"
+        }
+      },
+      "required": [
+        "when",
+        "set"
+      ],
+      "type": "object"
+    },
+    "Field": {
+      "additionalProperties": false,
+      "properties": {
+        "accept": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "action": {
+          "type": "string"
+        },
+        "addText": {
+          "$ref": "#/definitions/I18nKey",
+          "description": "label for the Add button (default \"Add\")"
+        },
+        "alt": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "asyncValidation": {
+          "$ref": "#/definitions/AsyncValidation"
+        },
+        "className": {
+          "type": "string"
+        },
+        "classNames": {
+          "$ref": "#/definitions/FieldClassNames"
+        },
+        "clearable": {
+          "type": "boolean"
+        },
+        "computed": {
+          "$ref": "#/definitions/Computed",
+          "description": "derived value — renders read-only unless `editable` is set"
+        },
+        "default": {},
+        "defaultItems": {
+          "description": "number of empty rows the form starts with (default 0; `default` wins)",
+          "type": "number"
+        },
+        "description": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "disabledWhen": {
+          "$ref": "#/definitions/Visibility"
+        },
+        "editable": {
+          "description": "allow user edits on a computed field (an input change still overwrites)",
+          "type": "boolean"
+        },
+        "effects": {
+          "description": "reactions fired when this field's value changes",
+          "items": {
+            "$ref": "#/definitions/Effect"
+          },
+          "type": "array"
+        },
+        "item": {
+          "$ref": "#/definitions/ArrayItemSpec",
+          "description": "what each row contains; required when `type` is \"array\""
+        },
+        "label": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "mask": {
+          "type": "string"
+        },
+        "max": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "min": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "multiple": {
+          "description": "`file`: allow multiple files. `select`: turn it into a multi-select (array value).",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "Data key. Unique within the form, no spaces. Becomes the key in submitted values.",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/definitions/FieldOption"
+          },
+          "type": "array"
+        },
+        "optionsSource": {
+          "$ref": "#/definitions/OptionsSource"
+        },
+        "placeholder": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "prefix": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "props": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "removeText": {
+          "$ref": "#/definitions/I18nKey",
+          "description": "accessible label for each row's Remove button (default \"Remove\")"
+        },
+        "requiredWhen": {
+          "$ref": "#/definitions/Visibility"
+        },
+        "rows": {
+          "type": "number"
+        },
+        "sortable": {
+          "description": "render move up/down controls on rows",
+          "type": "boolean"
+        },
+        "src": {
+          "description": "row-count bounds live in `validation.minItems` / `validation.maxItems`",
+          "type": "string"
+        },
+        "step": {
+          "type": "number"
+        },
+        "style": {
+          "type": "object",
+          "description": "Inline CSS properties applied to the field wrapper (React.CSSProperties)."
+        },
+        "suffix": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "text": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "tooltip": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "type": {
+          "$ref": "#/definitions/FieldType"
+        },
+        "upload": {
+          "description": "`file`: name of an injected uploader (<FormRender uploaders={...}>). Files upload as soon as they're selected (with progress); at submit the File values are swapped for the uploaded URLs, and submit is blocked while uploads are in flight or failed.",
+          "type": "string"
+        },
+        "validation": {
+          "$ref": "#/definitions/Validation"
+        },
+        "visibleWhen": {
+          "$ref": "#/definitions/Visibility"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "const": "full",
+              "type": "string"
+            },
+            {
+              "const": "half",
+              "type": "string"
+            },
+            {
+              "const": "third",
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "flow layout width; ignored when an explicit `layout` lists this field"
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "type": "object"
+    },
+    "FieldClassNames": {
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "wrapper": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "FieldOption": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "value": {
+          "type": [
+            "string",
+            "number"
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "label"
+      ],
+      "type": "object"
+    },
+    "FieldRef": {
+      "additionalProperties": false,
+      "description": "Compare against another field's value instead of a literal: `{ \"gt\": { \"$field\": \"start\" } }`.",
+      "properties": {
+        "$field": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$field"
+      ],
+      "type": "object"
+    },
+    "FieldType": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ValueFieldType"
+        },
+        {
+          "$ref": "#/definitions/ActionFieldType"
+        },
+        {
+          "$ref": "#/definitions/ContainerFieldType"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "description": "Any field type. Unknown strings are allowed so consumers can register custom field components in the adapter map."
+    },
+    "FormRule": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "message": {
+              "$ref": "#/definitions/I18nKey"
+            },
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "const": "equals",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "fields",
+            "path",
+            "message"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "message": {
+              "$ref": "#/definitions/I18nKey"
+            },
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "gt",
+                "lt",
+                "gte",
+                "lte"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "fields",
+            "path",
+            "message"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "message": {
+              "$ref": "#/definitions/I18nKey"
+            },
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "const": "requiredIf",
+              "type": "string"
+            },
+            "when": {
+              "$ref": "#/definitions/Visibility"
+            }
+          },
+          "required": [
+            "type",
+            "field",
+            "when",
+            "path",
+            "message"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "message": {
+              "$ref": "#/definitions/I18nKey"
+            },
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "const": "custom",
+              "type": "string"
+            },
+            "validator": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "validator",
+            "path",
+            "message"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "FormSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "description": "extra buttons only; Back/Next/Finish are generated automatically",
+          "items": {
+            "$ref": "#/definitions/Field"
+          },
+          "type": "array"
+        },
+        "classNames": {
+          "$ref": "#/definitions/FieldClassNames"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/definitions/Field"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "layout": {
+          "items": {
+            "$ref": "#/definitions/LayoutRow"
+          },
+          "type": "array"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/definitions/FormRule"
+          },
+          "type": "array"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/definitions/Section"
+          },
+          "type": "array"
+        },
+        "settings": {
+          "$ref": "#/definitions/FormSettings"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/definitions/Step"
+          },
+          "type": "array"
+        },
+        "title": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "version": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "FormSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "description": "grid columns the layout maps onto (default 12)",
+          "type": "number"
+        },
+        "hiddenValues": {
+          "description": "What happens to a field's value when it becomes hidden. \"clear\" (default, v1 behavior) unregisters it — re-showing snaps back to the default. \"keep\" retains the user's value in state while still excluding it from validation and from the submitted payload.",
+          "enum": [
+            "clear",
+            "keep"
+          ],
+          "type": "string"
+        },
+        "navigation": {
+          "additionalProperties": false,
+          "properties": {
+            "back": {
+              "$ref": "#/definitions/I18nKey"
+            },
+            "finish": {
+              "$ref": "#/definitions/I18nKey"
+            },
+            "next": {
+              "$ref": "#/definitions/I18nKey"
+            }
+          },
+          "type": "object"
+        },
+        "persist": {
+          "enum": [
+            "none",
+            "local",
+            "session"
+          ],
+          "type": "string"
+        },
+        "stepValidation": {
+          "description": "gated = Next disabled until current step's visible fields validate",
+          "enum": [
+            "gated",
+            "free"
+          ],
+          "type": "string"
+        },
+        "validateOn": {
+          "enum": [
+            "onChange",
+            "onBlur",
+            "onSubmit"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "I18nKey": {
+      "description": "A user-facing string. When a `t` function is supplied it is treated as a translation key.",
+      "type": "string"
+    },
+    "LayoutCell": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "span": {
+          "description": "1–12 grid units",
+          "type": "number"
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "type": "object"
+    },
+    "LayoutRow": {
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/definitions/LayoutCell"
+          }
+        ]
+      },
+      "type": "array"
+    },
+    "OptionsSource": {
+      "additionalProperties": false,
+      "description": "Dynamic options. The JSON names a loader; the function is injected via <FormRender loaders={...}>. `dependsOn` lists fields whose change re-runs the loader and resets this field's value.",
+      "properties": {
+        "dependsOn": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "loader": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "loader"
+      ],
+      "type": "object"
+    },
+    "Rule<(number|string)>": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "value": {
+          "type": [
+            "number",
+            "string"
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Rule<number>": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Rule<string>": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Rule<string[]>": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "value": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Section": {
+      "additionalProperties": false,
+      "properties": {
+        "collapsible": {
+          "type": "boolean"
+        },
+        "defaultOpen": {
+          "type": "boolean"
+        },
+        "description": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "fields": {
+          "description": "field names placed in this section",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "layout": {
+          "description": "explicit row layout for this section (rows of field names); falls back to per-field width",
+          "items": {
+            "$ref": "#/definitions/LayoutRow"
+          },
+          "type": "array"
+        },
+        "title": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "visibleWhen": {
+          "$ref": "#/definitions/Visibility"
+        }
+      },
+      "required": [
+        "id",
+        "fields"
+      ],
+      "type": "object"
+    },
+    "Step": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/definitions/Field"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "layout": {
+          "items": {
+            "$ref": "#/definitions/LayoutRow"
+          },
+          "type": "array"
+        },
+        "review": {
+          "description": "Review step: renders a read-only summary of every previous step's visible values with per-step Edit links (through the Review slot) instead of fields. Usually the last step; `fields` should be [].",
+          "type": "boolean"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/definitions/Section"
+          },
+          "type": "array"
+        },
+        "title": {
+          "$ref": "#/definitions/I18nKey"
+        },
+        "visibleWhen": {
+          "$ref": "#/definitions/Visibility",
+          "description": "a hidden step is removed from the wizard sequence + step count"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "fields"
+      ],
+      "type": "object"
+    },
+    "Validation": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "additionalProperties": false,
+          "properties": {
+            "message": {
+              "$ref": "#/definitions/I18nKey"
+            }
+          },
+          "required": [
+            "message"
+          ],
+          "type": "object"
+        },
+        "fileTypes": {
+          "$ref": "#/definitions/Rule%3Cstring%5B%5D%3E"
+        },
+        "max": {
+          "$ref": "#/definitions/Rule%3C(number%7Cstring)%3E"
+        },
+        "maxFiles": {
+          "$ref": "#/definitions/Rule%3Cnumber%3E"
+        },
+        "maxItems": {
+          "$ref": "#/definitions/Rule%3Cnumber%3E"
+        },
+        "maxLength": {
+          "$ref": "#/definitions/Rule%3Cnumber%3E"
+        },
+        "maxSize": {
+          "$ref": "#/definitions/Rule%3Cnumber%3E",
+          "description": "file: maxSize in MB"
+        },
+        "min": {
+          "$ref": "#/definitions/Rule%3C(number%7Cstring)%3E",
+          "description": "numeric bounds, or ISO date/time bounds (string)"
+        },
+        "minItems": {
+          "$ref": "#/definitions/Rule%3Cnumber%3E",
+          "description": "multiselect"
+        },
+        "minLength": {
+          "$ref": "#/definitions/Rule%3Cnumber%3E"
+        },
+        "pattern": {
+          "$ref": "#/definitions/Rule%3Cstring%3E"
+        },
+        "required": {
+          "additionalProperties": false,
+          "properties": {
+            "message": {
+              "$ref": "#/definitions/I18nKey"
+            }
+          },
+          "required": [
+            "message"
+          ],
+          "type": "object"
+        },
+        "url": {
+          "additionalProperties": false,
+          "properties": {
+            "message": {
+              "$ref": "#/definitions/I18nKey"
+            }
+          },
+          "required": [
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "ValueFieldType": {
+      "description": "Native input types + composite controls that hold a value.",
+      "enum": [
+        "text",
+        "email",
+        "password",
+        "search",
+        "tel",
+        "url",
+        "number",
+        "range",
+        "color",
+        "date",
+        "datetime-local",
+        "month",
+        "time",
+        "week",
+        "checkbox",
+        "switch",
+        "radio",
+        "select",
+        "multiselect",
+        "textarea",
+        "file",
+        "hidden"
+      ],
+      "type": "string"
+    },
+    "Visibility": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Condition"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "items": {
+                "$ref": "#/definitions/Visibility"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "items": {
+                "$ref": "#/definitions/Visibility"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "type": "object"
+        }
+      ],
+      "description": "A condition tree. `all` = AND, `any` = OR; both are nestable."
+    }
+  },
+  "title": "schema-form-engine FormSchema",
+  "description": "Declarative JSON form schema for schema-form-engine — fields, layout, conditions, validation, arrays, computed values, and multi-step wizards."
+}
