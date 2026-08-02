@@ -33,4 +33,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npx vitest run
+      - run: npm run build
+      # templates must compile against the real UI libraries (chakra/mantine/mui/antd)
+      - run: npm run check:adapters
       - run: npm publish --provenance --access public
