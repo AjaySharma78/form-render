@@ -140,7 +140,52 @@ Output is checked with `validateSchema`; invalid attempts get one automatic
 repair round with the errors fed back. Building your own agent? Import
 `AI_SYSTEM_PROMPT` and the official JSON Schema
 (`schema-form-engine/schema.json`) — add `"$schema"` to your form files for
-editor autocomplete. Details in [docs/ai-prompt.md](docs/ai-prompt.md).
+editor autocomplete.
+
+## 🤖 MCP server — use the engine from Claude Code, Cursor, any agent (v2.1)
+
+The package ships a [Model Context Protocol](https://modelcontextprotocol.io)
+server, so agents can generate and validate form schemas as first-class tools:
+
+```bash
+npm i @modelcontextprotocol/sdk        # optional peer — only the MCP server needs it
+
+# Claude Code
+claude mcp add form-render -- npx -y schema-form-engine mcp
+
+# Cursor / VS Code — .cursor/mcp.json / .vscode/mcp.json
+{ "mcpServers": { "form-render": { "command": "npx", "args": ["-y", "schema-form-engine", "mcp"] } } }
+```
+
+Tools: `validate_form_schema` and the schema-reference tools work fully
+offline; `generate_form_schema` (description and/or screenshot path → validated
+schema) uses whichever provider key is set in the environment
+(`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GOOGLE_API_KEY`). Now "add a
+checkout form to my app" wires your schema in, whatever editor the dev lives in.
+
+## 🔍 Schema diffing — catch breaking form changes in CI (v2.1)
+
+Forms evolve; stored drafts and submitted payloads don't. `diff` classifies
+every change by its impact on existing data:
+
+```bash
+npx schema-form-engine diff form.v1.json form.v2.json
+# ✖ BREAKING (2)
+#    age            constraint-tightened   "min" tightened (18 → 21).
+#    plan           option-removed         Option value(s) removed: free — payloads holding them no longer validate.
+# ▲ RISKY (1)
+#    email          field-probably-renamed "email" was probably renamed to "workEmail" …
+
+npx schema-form-engine diff old.json new.json --json          # machine report
+npx schema-form-engine diff old.json new.json --fail-on risky # stricter CI gate
+```
+
+**breaking** = old payloads become invalid or lose data (field removed, type
+shape changed, constraint tightened, option removed…). **risky** = behavior
+changes but old data still validates. **cosmetic** = labels/order/layout
+(hidden unless `--verbose`). Exit 1 when the `--fail-on` threshold (default
+`breaking`) is hit — drop it into CI next to `validate`. Also available
+programmatically: `import { diffSchemas } from "schema-form-engine"`.
 
 ## Injectable slots — zero custom UI
 
@@ -526,13 +571,18 @@ references and any computed/effects cycle.
 
 ## Roadmap
 
-- **v2 (in progress):** ~~repeatable groups~~ ✅, ~~typed values (`InferValues`)~~ ✅,
-  ~~computed fields + reactions~~ ✅, ~~async-validation-at-submit~~ ✅,
-  ~~richer conditions + custom rules~~ ✅, ~~loader states~~ ✅, ~~versioned drafts +
-  migrations~~ ✅, ~~polish pack (a11y, masks, tooltips, wizard upgrades, review
-  steps)~~ ✅ — engine + polish complete (beta.2). Next: AI schema generation,
-  JSON Schema publishing, playground v2, launch.
-  See [docs/PRD-v2.md](docs/PRD-v2.md) and [docs/TASKS-v2.md](docs/TASKS-v2.md).
+- **v2 — shipped:** repeatable groups, typed values (`InferValues`), computed
+  fields + reactions, async-validation-at-submit, richer conditions + custom
+  rules, loader states, versioned drafts + migrations, full a11y/mask/tooltip/
+  wizard polish, AI schema generation, the official JSON Schema, and the
+  playground/visual builder on the docs site.
+- **v2.1 / v2.2 — this release:** schema diffing (`diffSchemas` + `form-render diff`
+  for CI), an MCP server (`form-render mcp`) so agents can generate/validate
+  schemas as tools, and Chakra UI + Mantine adapters with a compile harness that
+  typechecks every bundled adapter against its real UI library.
+- **Next:** community template gallery; a v3 investigation into a
+  framework-agnostic core (`@schema-form-engine/core` + React/Vue/Svelte
+  bindings) and a headless render mode for React Native.
 
 ## License
 

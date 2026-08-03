@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // the shadcn template's UI imports are wildcard-stubbed (the consumer's
+    // generated components) → their props are `any`, so handler params can't
+    // infer. Everything else — engine types, JSX, strict null checks — still
+    // checks at full strictness.
+    "noImplicitAny": false
+  },
+  "include": ["src/shadcn-adapter.tsx", "src/dropzone.tsx", "stubs"],
+  "exclude": []
+}

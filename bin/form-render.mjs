@@ -4,7 +4,9 @@
  *
  *   npx schema-form-engine add shadcn [--out <path>] [--force] [--no-deps] [--no-init]
  *   npx schema-form-engine validate <schema.json>
+ *   npx schema-form-engine diff <old.json> <new.json> [--json] [--strict] [--verbose] [--allow-invalid] [--fail-on breaking|risky]
  *   npx schema-form-engine generate "<description>" [--out form.json] [--provider anthropic|openai] [--model <id>] [--image <path>]
+ *   npx schema-form-engine mcp
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -252,6 +254,18 @@ const SIMPLE_ADAPTERS = {
     deps: ["antd"],
     exports: "antdComponents, antdSlots",
   },
+  chakra: {
+    template: "chakra-adapter.tsx",
+    defaultOut: "src/lib/form-render-chakra.tsx",
+    deps: ["@chakra-ui/react@^3", "@emotion/react"],
+    exports: "chakraComponents, chakraSlots",
+  },
+  mantine: {
+    template: "mantine-adapter.tsx",
+    defaultOut: "src/lib/form-render-mantine.tsx",
+    deps: ["@mantine/core@^8", "@mantine/hooks@^8", "@mantine/dates@^8", "dayjs"],
+    exports: "mantineComponents, mantineSlots",
+  },
 };
 
 function addSimpleAdapter(kind) {
@@ -334,6 +348,88 @@ async function validateCmd(file) {
   log(`✔ ${file} is a valid FormSchema (id "${schema.id}", ${fieldCount} fields).`);
 }
 
+/** Read + parse a schema file for diffing; exits 2 on unusable input. */
+function readSchemaFile(file) {
+  if (!file || file.startsWith("--")) {
+    errl("✖ Usage: diff <old.json> <new.json> [--json] [--strict] [--verbose] [--allow-invalid] [--fail-on breaking|risky]");
+    process.exit(2);
+  }
+  const path = isAbsolute(file) ? file : resolve(process.cwd(), file);
+  if (!existsSync(path)) {
+    errl(`✖ File not found: ${file}`);
+    process.exit(2);
+  }
+  let schema;
+  try {
+    schema = JSON.parse(readFileSync(path, "utf8"));
+  } catch (e) {
+    errl(`✖ ${file} is not valid JSON: ${e.message}`);
+    process.exit(2);
+  }
+  delete schema.$schema; // editor pragma, not part of the contract
+  return schema;
+}
+
+async function diffCmd(fileA, fileB) {
+  const a = readSchemaFile(fileA);
+  const b = readSchemaFile(fileB);
+  const { validateSchema, diffSchemas } = await loadDist("index.js");
+
+  if (!argv.includes("--allow-invalid")) {
+    for (const [schema, file] of [[a, fileA], [b, fileB]]) {
+      try {
+        validateSchema(schema);
+      } catch (e) {
+        errl(`✖ ${file} is not a valid FormSchema (use --allow-invalid to compare anyway):\n${e.message}`);
+        process.exit(2);
+      }
+    }
+  }
+
+  const report = diffSchemas(a, b, { strict: argv.includes("--strict") });
+
+  const failOn = flag("--fail-on") ?? "breaking";
+  if (!["breaking", "risky"].includes(failOn)) {
+    errl(`✖ --fail-on must be "breaking" or "risky", got "${failOn}".`);
+    process.exit(2);
+  }
+  const failed = report.counts.breaking > 0 || (failOn === "risky" && report.counts.risky > 0);
+
+  if (argv.includes("--json")) {
+    log(JSON.stringify(report, null, 2));
+    process.exit(failed ? 1 : 0);
+  }
+
+  const tty = process.stdout.isTTY;
+  const paint = (code, s) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
+  const SEV = {
+    breaking: { icon: "✖", paint: (s) => paint(31, s) },
+    risky: { icon: "▲", paint: (s) => paint(33, s) },
+    cosmetic: { icon: "•", paint: (s) => paint(90, s) },
+  };
+  const shown = argv.includes("--verbose")
+    ? report.findings
+    : report.findings.filter((f) => f.severity !== "cosmetic");
+
+  if (!shown.length) {
+    log(`✔ No ${argv.includes("--verbose") ? "" : "breaking or risky "}differences (${report.counts.cosmetic} cosmetic).`);
+  } else {
+    for (const sev of ["breaking", "risky", "cosmetic"]) {
+      const group = shown.filter((f) => f.severity === sev);
+      if (!group.length) continue;
+      log(SEV[sev].paint(`${SEV[sev].icon} ${sev.toUpperCase()} (${group.length})`));
+      for (const f of group) log(`   ${f.path.padEnd(24)} ${f.code.padEnd(28)} ${f.message}`);
+      log("");
+    }
+    log(
+      `${report.counts.breaking} breaking, ${report.counts.risky} risky, ${report.counts.cosmetic} cosmetic` +
+        (argv.includes("--verbose") ? "" : " (cosmetic hidden — use --verbose)") +
+        `. Fail threshold: ${failOn}.`,
+    );
+  }
+  process.exit(failed ? 1 : 0);
+}
+
 const IMAGE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
 
 const PROVIDER_KEYS = {
@@ -412,8 +508,14 @@ function help() {
   log("      Scaffold the Material UI / Ant Design adapter and install its deps.\n");
   log(`  npx ${name} validate <schema.json>`);
   log("      Check a form schema (structure, refs, cycles) and exit non-zero on problems.\n");
+  log(`  npx ${name} diff <old.json> <new.json> [--json] [--strict] [--verbose] [--allow-invalid] [--fail-on breaking|risky]`);
+  log("      Semantic schema diff classified as breaking / risky / cosmetic (CI-friendly:");
+  log("      exit 1 when the --fail-on threshold is hit, exit 2 on unusable input).\n");
   log(`  npx ${name} generate "<description>" [--out form.json] [--provider anthropic|openai|google] [--model <id>] [--image <path>]`);
   log("      Generate a validated schema with AI (needs ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY).\n");
+  log(`  npx ${name} mcp`);
+  log("      Run the Model Context Protocol server on stdio (for Claude Code, Cursor, …).");
+  log("      Needs the optional peer: npm i @modelcontextprotocol/sdk\n");
   log("Options (add shadcn):");
   log("  --out <path>   Destination file (default: src/lib/form-render-shadcn.tsx)");
   log("  --force        Overwrite the adapter / dropzone if they already exist");
@@ -427,5 +529,9 @@ if (argv.includes("-h") || argv.includes("--help")) help();
 else if (cmd === "add" && sub === "shadcn") addShadcn();
 else if (cmd === "add" && SIMPLE_ADAPTERS[sub]) addSimpleAdapter(sub);
 else if (cmd === "validate") await validateCmd(sub);
+else if (cmd === "diff") await diffCmd(argv[1], argv[2]);
 else if (cmd === "generate") await generateCmd(sub);
-else help();
+else if (cmd === "mcp") {
+  const { runMcpStdio } = await loadDist("mcp/index.js");
+  await runMcpStdio(); // serves until the client disconnects
+} else help();

@@ -23,12 +23,23 @@ export default defineConfig([
     external: ["react", "react-dom", "react-hook-form", "zod", "@hookform/resolvers"],
   },
   {
-    // server-safe subpath (plain fetch, no React) — must NOT carry "use client",
-    // so generateFormSchema stays importable from server actions / Node scripts.
-    entry: { "ai/index": "src/ai/index.ts" },
+    // server-safe subpaths (no React, no "use client"):
+    // - ai: generateFormSchema for server actions / Node scripts
+    // - mcp: the Model Context Protocol server (SDK is an optional peer,
+    //   lazy-imported at runtime — keep it external here)
+    entry: { "ai/index": "src/ai/index.ts", "mcp/index": "src/mcp/index.ts" },
     format: ["esm", "cjs"],
     dts: true,
     sourcemap: true,
-    external: ["react", "react-dom", "react-hook-form", "zod", "@hookform/resolvers"],
+    // `shims` maps import.meta.url in the CJS build (mcp reads ../../schema.json)
+    shims: true,
+    external: [
+      "react",
+      "react-dom",
+      "react-hook-form",
+      "zod",
+      "@hookform/resolvers",
+      /^@modelcontextprotocol\/sdk/,
+    ],
   },
 ]);

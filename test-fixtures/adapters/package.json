@@ -1,0 +1,25 @@
+{
+  "name": "adapter-compile-harness",
+  "private": true,
+  "description": "Typechecks every shipped adapter template against the REAL UI libraries + the built engine (dist/). Run via `npm run check:adapters` in the package root.",
+  "devDependencies": {
+    "@chakra-ui/react": "^3.2.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mantine/core": "^8.1.0",
+    "@mantine/dates": "^8.1.0",
+    "@mantine/hooks": "^8.1.0",
+    "@mui/material": "^7.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "antd": "^5.24.0",
+    "dayjs": "^1.11.13",
+    "lucide-react": "^1.17.0",
+    "react": "^18.3.1",
+    "react-day-picker": "^9.5.0",
+    "react-dom": "^18.3.1",
+    "react-dropzone": "^14.3.5",
+    "react-hook-form": "^7.81.0",
+    "typescript": "^5.6.3"
+  }
+}

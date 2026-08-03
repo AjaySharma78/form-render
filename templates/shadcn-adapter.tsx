@@ -344,7 +344,7 @@ function RadioField(p: FieldComponentProps<string>) {
 // Build react-dropzone's `accept` map from the JSON `field.accept` list.
 // MIME entries (containing "/") become keys; bare extensions are bucketed
 // under a catch-all key so they still filter by file name.
-function toAccept(accept?: string[]): Accept | undefined {
+function toAccept(accept?: readonly string[]): Accept | undefined {
   if (!accept?.length) return undefined;
   const out: Record<string, string[]> = {};
   for (const entry of accept) {

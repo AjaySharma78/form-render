@@ -11,6 +11,8 @@ export { compileZod } from "./compile/zod";
 export { buildDefaults, emptyRowFor } from "./compile/defaults";
 export { validateSchema } from "./compile/validate";
 export { getSteps, allFields } from "./compile/schema-utils";
+export { diffSchemas } from "./engine/diff";
+export type { DiffFinding, DiffOptions, DiffReport, DiffSeverity } from "./engine/diff";
 
 // Engine primitives (for building custom adapters)
 export {
